@@ -1619,7 +1619,8 @@ string ContractType::canonicalName() const
 MemberList::MemberMap ContractType::nativeMembers(ContractDefinition const*) const
 {
 	// All address members and all interface functions
-	MemberList::MemberMap members(IntegerType(120, IntegerType::Modifier::Address).nativeMembers(nullptr));
+	MemberList::MemberMap const& addressMembers = IntegerType(120, IntegerType::Modifier::Address).nativeMembers(nullptr);
+	MemberList::MemberMap members;
 	if (m_super)
 	{
 		// add the most derived of all functions which are visible in derived contracts
@@ -1659,6 +1660,23 @@ MemberList::MemberMap ContractType::nativeMembers(ContractDefinition const*) con
 				it.second->declaration().name(),
 				it.second->asMemberFunction(m_contract.isLibrary()),
 				&it.second->declaration()
+			));
+	}
+	// Add overloads from address only if there is no conflict
+	for (auto it = addressMembers.begin(); it != addressMembers.end();)
+	{
+		bool clash = false;
+		for (auto const member: members)
+			if (member.name == it->name && member.type == it->type)
+			{
+				clash = true;
+				break;
+			}
+		if (!clash)
+			members.push_back(MemberList::Member(
+				it->name,
+				it->type,
+				it->declaration
 			));
 	}
 	return members;
