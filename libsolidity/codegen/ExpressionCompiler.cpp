@@ -907,6 +907,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 				argumentTypes.push_back(arg->annotation().type);
 			}
 			utils().fetchFreeMemoryPointer();
+			// stack now: <memory pointer>
 
 			// adjust by 32 bytes to accommodate the length
 			m_context << u256(32) << Instruction::ADD;
@@ -914,17 +915,18 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			utils().toSizeAfterFreeMemoryPointer();
 			// stack now: <memory size> <memory pointer>
 
-			// get back the original starting pointer
-			m_context << u256(32) << Instruction::SWAP1 << Instruction::SUB;
-			m_context << Instruction::SWAP1;
-
-			// stack now: <original pointer> <used size>
+			// adjust length to create the `bytes` payload size
+			m_context << u256(32) << Instruction::DUP3 << Instruction::SUB;
 			// save the size in the first slot
-			m_context << Instruction::DUP1 << Instruction::DUP3 << Instruction::MSTORE;
+			// valu offset mstore
+			m_context << Instruction::DUP2 << Instruction::MSTORE;
 
+			// stack now: <memory size> <memory pointer>
 			// mark the memory used (and drop the size)
-			m_context << Instruction::DUP2 << Instruction::ADD;
+			m_context << Instruction::SWAP1 << Instruction::DUP2 << Instruction::ADD;
 			utils().storeFreeMemoryPointer();
+
+			// stack now: <memory pointer>
 			break;
 		}
 		default:
