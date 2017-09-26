@@ -909,13 +909,14 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			utils().fetchFreeMemoryPointer();
 
 			// adjust by 32 bytes to accommodate the length
-			m_context << Instruction::DUP1 << u256(32) << Instruction::ADD;
+			m_context << u256(32) << Instruction::ADD;
 			utils().encodeToMemory(argumentTypes, TypePointers(), function.padArguments(), true);
 			utils().toSizeAfterFreeMemoryPointer();
-			// stack now: <original pointer> <memory size> <memory pointer>
+			// stack now: <memory size> <memory pointer>
 
-			// drop the new pointer
-			m_context << Instruction::POP;
+			// get back the original starting pointer
+			m_context << u256(32) << Instruction::SWAP1 << Instruction::SUB;
+			m_context << Instruction::SWAP1;
 
 			// stack now: <original pointer> <used size>
 			// save the size in the first slot
